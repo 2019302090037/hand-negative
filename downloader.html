@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>资源下载器 - 下载MediaPipe模型文件</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,sans-serif;background:#111;color:#eee;padding:15px;font-size:14px;line-height:1.6}
+h3{color:#0ff;margin-bottom:10px}
+.box{background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:12px;margin:10px 0}
+.btn{display:block;width:100%;padding:12px;margin:8px 0;background:#0ff;color:#000;font-weight:700;border:0;border-radius:8px;font-size:14px;cursor:pointer}
+.btn:disabled{opacity:.4}
+.btn.alt{background:#f80;color:#fff}
+.status{font-size:12px;color:#ff0;margin-top:6px;min-height:16px}
+.done{color:#0f6}
+.fail{color:#f44}
+.hint{font-size:11px;color:#888;margin-top:4px}
+</style>
+</head>
+<body>
+<h3>📦 MediaPipe 资源下载器</h3>
+<div class="hint">开VPN后用Safari打开此页，逐个点下载。下载完所有文件后，和 hand-negative.html 一起传到 GitHub 仓库。</div>
+
+<div class="box">
+  <div>① 手部模型 (约5.5MB)</div>
+  <button class="btn" id="dl1">下载 hand_landmarker.task</button>
+  <div class="status" id="s1"></div>
+</div>
+
+<div class="box">
+  <div>② JS模块 (约2MB)</div>
+  <button class="btn" id="dl2">下载 vision_bundle.mjs</button>
+  <div class="status" id="s2"></div>
+</div>
+
+<div class="box">
+  <div>③ WASM文件 (约10MB，要点多个)</div>
+  <button class="btn alt" id="dl3a">下载 vision_wasm_internal.js</button>
+  <div class="status" id="s3a"></div>
+  <button class="btn alt" id="dl3b">下载 vision_wasm_internal.wasm</button>
+  <div class="status" id="s3b"></div>
+  <button class="btn alt" id="dl3c">下载 wasm 目录其他文件 (列出清单)</button>
+  <div class="status" id="s3c"></div>
+</div>
+
+<div class="box">
+  <div class="hint">
+    <b>下载后操作：</b><br>
+    1. 在「文件」App 里新建文件夹 <b>wasm</b><br>
+    2. 把 wasm 相关文件移进去<br>
+    3. 把所有文件和 hand-negative.html 一起上传到 GitHub 仓库<br>
+    4. 确保仓库结构如下：<br>
+    <pre style="color:#0ff;margin-top:6px;">
+hand-negative.html
+vision_bundle.mjs
+hand_landmarker.task
+wasm/
+  vision_wasm_internal.js
+  vision_wasm_internal.wasm
+  ...其他wasm文件
+    </pre>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+function dl(url, filename, statusId) {
+  const s = $(statusId);
+  s.textContent = '下载中…';
+  s.className = 'status';
+  fetch(url)
+    .then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.blob();
+    })
+    .then(blob => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+      s.textContent = '✅ 已下载: ' + filename + ' (' + Math.round(blob.size/1024) + 'KB)';
+      s.className = 'status done';
+    })
+    .catch(e => {
+      s.textContent = '❌ 失败: ' + e.message + ' | 请换VPN节点重试';
+      s.className = 'status fail';
+    });
+}
+
+// 用 xget 镜像下载模型（绕过 Google Cloud 墙）
+$('dl1').onclick = () => {
+  dl('https://xget.xi-xu.me/gh/storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task', 'hand_landmarker.task', 's1');
+};
+
+// JS 模块
+$('dl2').onclick = () => {
+  dl('https://fastly.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/dist/vision_bundle.mjs', 'vision_bundle.mjs', 's2');
+};
+
+// WASM 文件
+$('dl3a').onclick = () => {
+  dl('https://fastly.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm/vision_wasm_internal.js', 'vision_wasm_internal.js', 's3a');
+};
+
+$('dl3b').onclick = () => {
+  dl('https://fastly.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm/vision_wasm_internal.wasm', 'vision_wasm_internal.wasm', 's3b');
+};
+
+// 列出 wasm 目录内容
+$('dl3c').onclick = () => {
+  const s = $('s3c');
+  s.innerHTML = '正在获取文件清单…';
+  fetch('https://fastly.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm/')
+    .then(r => r.text())
+    .then(html => {
+      // 解析 jsDelivr 目录页面里的文件链接
+      const matches = html.match(/href="([^"]+\.(wasm|js|data))"/g) || [];
+      const files = matches.map(m => m.replace('href="','').replace('"',''));
+      if(files.length){
+        s.innerHTML = '需要下载以下文件到 wasm/ 文件夹：<br>' + 
+          files.map(f => '• ' + f).join('<br>') +
+          '<br><br><span style="color:#0ff">请逐个点击下载每个文件</span>';
+        // 自动创建下载链接
+        files.forEach((f,i) => {
+          const btn = document.createElement('button');
+          btn.className = 'btn alt';
+          btn.textContent = '下载 ' + f.split('/').pop();
+          btn.onclick = () => dl('https://fastly.jsdelivr.net' + f, f.split('/').pop(), 's3c');
+          s.appendChild(btn);
+        });
+      } else {
+        s.innerHTML = '无法解析目录，请手动访问：<br>https://fastly.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm/<br>逐个下载所有 .js .wasm .data 文件';
+      }
+    })
+    .catch(e => {
+      s.textContent = '❌ 获取清单失败: ' + e.message + ' | 请手动访问下方地址';
+    });
+};
+</script>
+</body>
+</html>
