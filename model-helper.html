@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>模型文件下载器</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,sans-serif;background:#111;color:#eee;padding:15px;font-size:14px;line-height:1.7}
+h3{color:#0ff;margin-bottom:12px;font-size:18px}
+.box{background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:14px;margin:12px 0}
+.btn{display:block;width:100%;padding:14px;margin:8px 0;background:linear-gradient(135deg,#0ff,#08f);color:#000;font-weight:700;border:0;border-radius:8px;font-size:15px;cursor:pointer}
+.btn.alt{background:linear-gradient(135deg,#f80,#f0f);color:#fff}
+.btn:disabled{opacity:.4}
+.status{font-size:12px;margin-top:6px;min-height:16px}
+.done{color:#0f6}.fail{color:#f44}.info{color:#0cf}
+.hint{font-size:11px;color:#888;margin-top:8px}
+code{background:#000;padding:2px 6px;border-radius:4px;color:#0ff;font-size:12px}
+pre{background:#000;padding:10px;border-radius:6px;color:#0f6;font-size:11px;overflow:auto;white-space:pre-wrap;margin:8px 0}
+</style>
+</head>
+<body>
+<h3>📦 MediaPipe 模型下载器</h3>
+<div class="hint">本页面帮你把 hand_landmarker.task 模型文件下载到手机。下载完后在「文件」App 里确认文件名是 hand_landmarker.task（不是 .txt 或其他）。</div>
+
+<div class="box">
+  <div style="color:#ccc;margin-bottom:8px;">方法一：直接下载（推荐先试）</div>
+  <button class="btn" id="dl1">① 下载 hand_landmarker.task (约5.5MB)</button>
+  <div class="status" id="s1"></div>
+</div>
+
+<div class="box">
+  <div style="color:#ccc;margin-bottom:8px;">方法二：如果方法一失败</div>
+  <div class="hint">复制下面地址到 Safari 地址栏，看能否下载：</div>
+  <pre>https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task</pre>
+  <div class="hint">如果浏览器显示 JSON 错误（403/denied），说明当前网络访问 Google Cloud 被拒。试方法三。</div>
+</div>
+
+<div class="box">
+  <div style="color:#ccc;margin-bottom:8px;">方法三：手动保存（终极办法）</div>
+  <div class="hint">如果上面都失败，需要一台能翻墙的电脑：</div>
+  <pre>1. 电脑开 VPN/代理
+2. 浏览器打开上面那个 .task 地址
+3. 浏览器会下载一个 .task 文件
+4. 通过微信/邮件/AirDrop 传到手机
+5. 保存到「文件」App，确认文件名</pre>
+</div>
+
+<div class="box">
+  <div style="color:#ccc;margin-bottom:8px;">下载完后的文件结构</div>
+  <pre>hand-negative.html          ← 主程序
+vision_bundle.mjs           ← JS模块(已下载)
+hand_landmarker.task         ← 模型(正在下载)
+wasm/                        ← WASM文件夹(已下载)
+  vision_wasm_internal.js
+  vision_wasm_internal.wasm</pre>
+  <div class="hint">全部上传到 GitHub 仓库根目录后，等 1-2 分钟，打开主页面即可。</div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+function dl(url, filename, statusId) {
+  const s = $(statusId);
+  s.textContent = '⏳ 下载中…请保持VPN开启…';
+  s.className = 'status info';
+  fetch(url)
+    .then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status + ' - 可能被网络拦截');
+      return r.blob();
+    })
+    .then(blob => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+      s.textContent = '✅ 已下载: ' + filename + ' (' + Math.round(blob.size/1024) + 'KB)';
+      s.className = 'status done';
+    })
+    .catch(e => {
+      s.textContent = '❌ 失败: ' + e.message;
+      s.className = 'status fail';
+    });
+}
+
+// 尝试多个镜像
+const urls = [
+  'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+  'https://xget.xi-xu.me/gh/storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+  'https://ghproxy.cn/https://raw.githubusercontent.com/google-ai-edge/mediapipe/main/mediapipe/model/hand_landmarker.task'
+];
+
+let urlIdx = 0;
+
+$('dl1').onclick = () => {
+  if (urlIdx < urls.length) {
+    $('s1').textContent = '尝试地址 ' + (urlIdx+1) + '/' + urls.length + '…';
+    $('s1').className = 'status info';
+    fetch(urls[urlIdx])
+      .then(r => {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.blob();
+      })
+      .then(blob => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'hand_landmarker.task';
+        a.click();
+        $('s1').textContent = '✅ 成功! 已下载 hand_landmarker.task (' + Math.round(blob.size/1024) + 'KB)';
+        $('s1').className = 'status done';
+      })
+      .catch(e => {
+        urlIdx++;
+        if (urlIdx < urls.length) {
+          $('s1').textContent = '地址' + urlIdx + '失败，自动尝试下一个…';
+          $('dl1').click(); // 自动试下一个
+        } else {
+          $('s1').textContent = '❌ 所有地址都失败。请使用方法三（电脑下载后传手机）。';
+          $('s1').className = 'status fail';
+        }
+      });
+  }
+};
+</script>
+</body>
+</html>
